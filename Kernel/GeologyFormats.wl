@@ -15,13 +15,14 @@ $GeologyFormatsDirectory = DirectoryName[$InputFileName,2];
 
 
 PetrelTopImport;
+WellHeadFromDev;
 
 
 Begin["`Private`"];
 
 
 (* ::Section:: *)
-(*Definitions*)
+(*Tops*)
 
 
 (* ::Text:: *)
@@ -43,6 +44,29 @@ PetrelTopImport[filepath_String]:=Module[
 		datalines=Map[StringSplit[#, "\t"][[1;;Length[headers]]]&, datatext];		
 		dataassoc=Map[AssociationThread[headers->#]&, datalines]
 ];
+
+
+(* ::Section:: *)
+(*Head from deviations*)
+
+
+WellHeadFromDev[filepath_String]:=Module[
+	{
+		dev=Import[filepath,"Text", CharacterEncoding->"WindowsCyrillic"],
+		wellname,
+		xcoord,
+		ycoord,
+		zcoord
+	},
+		wellname=StringTrim[StringCases[dev,Shortest["# WELL NAME:"~~WhitespaceCharacter..~~w___~~"\n"]->w]];
+		xcoord=StringTrim[StringCases[dev,Shortest["# WELL HEAD X-COORDINATE:"~~x__~~EndOfLine]->x]];
+		ycoord=StringTrim[StringCases[dev,Shortest["# WELL HEAD Y-COORDINATE:"~~y__~~EndOfLine]->y]];
+		zcoord=StringTrim[StringCases[dev,Shortest["# WELL DATUM (KB, Kelly bushing, from MSL):"~~z__~~EndOfLine]->z]];
+		zcoord=StringTrim[StringCases[dev,Shortest["# WELL KB:"~~z__~~EndOfLine]->z]];
+
+		Flatten[{wellname,xcoord,ycoord,zcoord}]
+]
+
 
 
 (* ::Section:: *)
