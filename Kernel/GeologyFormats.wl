@@ -16,12 +16,13 @@ $GeologyFormatsDirectory = DirectoryName[$InputFileName,2];
 
 PetrelTopImport;
 WellHeadFromDev;
+ZMAPGridImport
 
 
 Begin["`Private`"];
 
 
-(* ::Section:: *)
+(* ::Section::Closed:: *)
 (*Tops*)
 
 
@@ -67,6 +68,83 @@ WellHeadFromDev[filepath_String]:=Module[
 		Flatten[{wellname,xcoord,ycoord,zcoord}]
 ]
 
+
+
+(* ::Section:: *)
+(*Zmap Grid Import*)
+
+
+(* ::Subsection:: *)
+(*Match Comment, Header and Data*)
+
+
+ZMAPGridCommenStartQ[___] := False
+ZMAPGridCommenStartQ[line_String] := StringMatchQ[line, "!" ~~ ___ ~~ EndOfString]
+ZMAPGridFlagQ[line_String] := StringMatchQ[line, Verbatim["@"] ~~ ___ ~~ EndOfString]
+ZMAPGridComment[gridcomment: {__String}] := 
+	StringRiffle[gridcomment, "\n"]
+
+
+(* ::Subsection:: *)
+(*Create header*)
+
+
+	
+ZMAPGridHeader[gridheader: {__String}]:=
+	Block[{header},
+		header = Map[StringSplit[#, ","]&, gridheader];
+		<|
+			"nanvalue" -> ToExpression[header[[2,2]]],
+			"nrows" -> Round@ToExpression[header[[3,1]]],
+			"ncols" -> Round@ToExpression[header[[3,2]]],
+			"minx" -> ToExpression[header[[3,3]]],
+			"maxx" -> ToExpression[header[[3,4]]],
+			"miny" -> ToExpression[header[[3,5]]],
+			"maxy" -> ToExpression[header[[3,6]]]
+		|>
+	]	
+	
+
+
+(* ::Subsection:: *)
+(*Main Import function*)
+
+
+	
+ZMAPGridImport[path_String?FileExistsQ] /; 
+	StringMatchQ[FileExtension[path],"zmap"] := 
+	Module[{
+		stream, line, 
+		comment = {}, header = {}, data = {}, 
+		headerFlag = True, flagNum=0, position=0, headerValues
+	}, 
+		stream = OpenRead[path];
+	
+	While[headerFlag, 
+			line = ReadLine[stream]; 
+			position++;
+			If[ZMAPGridCommenStartQ[line], AppendTo[comment, line]];
+			If[ZMAPGridFlagQ[line], flagNum=flagNum+1];
+				If[flagNum>0 && flagNum<=2, AppendTo[header, line]]; 
+				If[flagNum==2,headerFlag=False; Break[];]; 
+			
+		];
+
+		position = StringLength[StringRiffle[Join[comment, header], "\n"]];
+		SetStreamPosition[stream, position + 1]; 
+		data = ReadList[stream, Real]; 
+		
+		Close[stream];
+
+		headerValues = ZMAPGridHeader[header];
+
+		(*Return*)
+		<|
+			"comment" -> ZMAPGridComment[comment], 
+			"header" -> ZMAPGridHeader[header], 
+			"data" -> data
+		|>
+	]	
 
 
 (* ::Section:: *)
