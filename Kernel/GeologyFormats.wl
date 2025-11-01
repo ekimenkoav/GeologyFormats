@@ -22,7 +22,7 @@ ZMAPGridImport
 Begin["`Private`"];
 
 
-(* ::Section::Closed:: *)
+(* ::Section:: *)
 (*Tops*)
 
 
@@ -71,7 +71,7 @@ WellHeadFromDev[filepath_String]:=Module[
 
 
 (* ::Section:: *)
-(*Zmap Grid Import*)
+(*Zmap Grid Import Functions*)
 
 
 (* ::Subsection:: *)
