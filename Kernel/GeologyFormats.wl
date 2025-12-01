@@ -107,6 +107,14 @@ ZMAPGridHeader[gridheader: {__String}]:=
 
 
 (* ::Subsection:: *)
+(*Create data array*)
+
+
+ZMAPGridData[data: {__Real}, header_Association] := 
+	ArrayReshape[data, {header["ncols"],header["nrows"]}]
+
+
+(* ::Subsection:: *)
 (*Main Import function*)
 
 
@@ -142,7 +150,7 @@ ZMAPGridImport[path_String?FileExistsQ] /;
 		<|
 			"comment" -> ZMAPGridComment[comment], 
 			"header" -> ZMAPGridHeader[header], 
-			"data" -> data
+			"data"  -> ZMAPGridData[data, headerValues]
 		|>
 	]	
 
