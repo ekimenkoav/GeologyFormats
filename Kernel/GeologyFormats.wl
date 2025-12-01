@@ -22,7 +22,7 @@ ZMAPGridImport
 Begin["`Private`"];
 
 
-(* ::Section:: *)
+(* ::Section::Closed:: *)
 (*Tops*)
 
 
@@ -47,7 +47,7 @@ PetrelTopImport[filepath_String]:=Module[
 ];
 
 
-(* ::Section:: *)
+(* ::Section::Closed:: *)
 (*Head from deviations*)
 
 
@@ -153,6 +153,107 @@ ZMAPGridImport[path_String?FileExistsQ] /;
 			"data"  -> ZMAPGridData[data, headerValues]
 		|>
 	]	
+
+
+(* ::Section:: *)
+(*LAS *)
+
+
+(* ::Subsection::Closed:: *)
+(*LAS Def*)
+
+
+SetAttributes[lasInfoLineParse, Listable]
+
+
+lasInfoLineParse[line_String] := StringCases[line, Shortest[key__ ]~~("."~~LetterCharacter..~~___~~unit__~~Whitespace..~~":")~~value___ -> {key-> value}]
+
+
+lasGetVersion[versioninfo: {__String}] := Association[Flatten[DeleteCases[lasInfoLineParse[versioninfo], {}]]]
+
+
+lasVersionStartQ[line_String] := StringMatchQ[line, "~V"~~___, IgnoreCase->True]
+
+
+lasGetWell[wellheader: {__String}] := Association[Flatten[DeleteCases[lasInfoLineParse[wellheader], {}]]]
+
+
+lasWellStartQ[line_String] := StringMatchQ[line, "~W"~~___, IgnoreCase->True]
+
+
+(*Info*)
+
+
+lasInfoStartQ[___] := 
+	False
+
+
+lasInfoStartQ[line_String] := 
+	StringMatchQ[line, "~C"~~___, IgnoreCase->True]
+
+
+lasGetInfo[curveheader: {__String}] := 
+	Association[Flatten[DeleteCases[lasInfoLineParse[curveheader], {}]]]
+
+
+(*Data*)
+
+
+lasDataStartQ[___] := 
+	False
+
+
+lasDataStartQ[line_String] := 
+	StringMatchQ[line, "~A" ~~ __]
+
+
+lasGetData[headers: {__String}, data: {__String}] := 
+	{
+		Flatten[StringSplit[StringTrim[StringTrim[headers, "~A "]], Whitespace..]],
+		ImportString[StringRiffle[data, "\n"], "Table"]
+	};
+
+
+(*LASImport*)
+
+
+LASImport[path_String?FileExistsQ] /; StringMatchQ[FileExtension[path], "las"] := 
+	Module[
+		{lines = ReadList[path, String], version = {}, well = {}, curve = {}, headers = {}, data = {}, line = "", current = "", i = 0}, 
+
+		While[Not[lasDataStartQ[line]], 
+			i = i + 1;
+			line = lines[[i]];
+			If[
+				lasVersionStartQ[line] || lasWellStartQ[line] || lasInfoStartQ[line] || lasDataStartQ[line], 
+				current = line
+			];
+			Which[
+				lasVersionStartQ[current], AppendTo[version, line], 
+				lasVersionStartQ[current], AppendTo[well, line], 
+				lasInfoStartQ[current], AppendTo[curve, line], 
+				lasDataStartQ[current], AppendTo[headers, line]
+			]; 
+			data = lines[[i + 1 ;; -1]];
+		];
+				
+		(*Return*)
+		LASData[<|
+			"Version" -> lasGetVersion[version],
+			"Well" -> lasGetWell[well],
+			"Info" -> lasGetInfo[curve],
+			"Data" -> lasGetData[headers, data]
+		|>]
+	]
+
+
+(* ::Subsection::Closed:: *)
+(*LASData*)
+
+
+LASData[data_Association][key_String] /; 
+	MemberQ[ToLowerCase[Keys[data]], ToLowerCase[key]]:= 
+	First[KeySelect[data, StringMatchQ[#, key, IgnoreCase -> True]&]]
 
 
 (* ::Section:: *)
